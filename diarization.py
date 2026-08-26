@@ -1,14 +1,25 @@
+import logging
 import os
 import threading
 
-from pyannote.audio import Pipeline
+logger = logging.getLogger(__name__)
 
 _lock = threading.Lock()
-_pipeline: Pipeline | None = None
+_pipeline = None
+_import_error: Exception | None = None
+
+try:
+    from pyannote.audio import Pipeline
+except Exception as exc:  # noqa: BLE001 - диаризация опциональна, не должна ронять бота
+    Pipeline = None
+    _import_error = exc
+    logger.warning("pyannote.audio недоступен, диаризация отключена: %s", exc)
 
 
-def _get_pipeline() -> Pipeline:
+def _get_pipeline():
     global _pipeline
+    if _import_error is not None:
+        raise RuntimeError("pyannote.audio не загрузился") from _import_error
     if _pipeline is None:
         with _lock:
             if _pipeline is None:
