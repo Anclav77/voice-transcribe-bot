@@ -5,11 +5,13 @@ import tempfile
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import CommandStart
-from aiogram.types import Message
+from aiogram.types import BufferedInputFile, Message
 
 from config import settings
 from deepseek_client import polish_text
-from transcriber import Transcriber
+from diarization import assign_speakers, diarize
+from pdf_export import build_pdf
+from transcriber import Transcriber, join_text
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -45,15 +47,23 @@ async def handle_voice(message: Message) -> None:
         await bot.download_file(tg_file.file_path, destination=local_path)
 
         try:
-            raw_text = await asyncio.to_thread(transcriber.transcribe, local_path)
+            segments, duration = await asyncio.to_thread(transcriber.transcribe, local_path)
         except Exception:
             logger.exception("Ошибка распознавания речи")
             await status.edit_text("Не получилось распознать сообщение. Попробуйте ещё раз.")
             return
 
-    if not raw_text.strip():
-        await status.edit_text("Не удалось разобрать речь в сообщении.")
-        return
+        raw_text = join_text(segments)
+        if not raw_text.strip():
+            await status.edit_text("Не удалось разобрать речь в сообщении.")
+            return
+
+        if duration >= settings.diarization_min_seconds:
+            try:
+                turns = await asyncio.to_thread(diarize, local_path)
+                raw_text = assign_speakers(segments, turns)
+            except Exception:
+                logger.exception("Ошибка диаризации, отдаю текст без разделения по спикерам")
 
     final_text = raw_text
     if settings.enable_deepseek_polish:
@@ -65,6 +75,15 @@ async def handle_voice(message: Message) -> None:
     await status.edit_text(final_text[:TELEGRAM_MESSAGE_LIMIT])
     for start in range(TELEGRAM_MESSAGE_LIMIT, len(final_text), TELEGRAM_MESSAGE_LIMIT):
         await message.answer(final_text[start : start + TELEGRAM_MESSAGE_LIMIT])
+
+    try:
+        pdf_bytes = await asyncio.to_thread(build_pdf, final_text)
+        await message.answer_document(
+            BufferedInputFile(pdf_bytes, filename="transcript.pdf"),
+            caption="Расшифровка в PDF",
+        )
+    except Exception:
+        logger.exception("Ошибка генерации PDF")
 
 
 async def main() -> None:

@@ -7,7 +7,7 @@ services:
       - .env
     volumes:
       - whisper-cache:/root/.cache/huggingface
-    mem_limit: 1200m
+    mem_limit: 1800m
     mem_reservation: 400m
 
 volumes:

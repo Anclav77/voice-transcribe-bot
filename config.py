@@ -15,6 +15,7 @@ class Settings:
     whisper_compute_type: str
     deepseek_model: str
     enable_deepseek_polish: bool
+    diarization_min_seconds: float
 
 
 def _get_bool(name: str, default: bool) -> bool:
@@ -32,4 +33,5 @@ settings = Settings(
     whisper_compute_type=os.getenv("WHISPER_COMPUTE_TYPE", "int8"),
     deepseek_model=os.getenv("DEEPSEEK_MODEL", "deepseek-chat"),
     enable_deepseek_polish=_get_bool("ENABLE_DEEPSEEK_POLISH", True),
+    diarization_min_seconds=float(os.getenv("DIARIZATION_MIN_SECONDS", "180")),
 )
