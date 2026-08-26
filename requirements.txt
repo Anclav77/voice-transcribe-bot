@@ -1,0 +1,4 @@
+aiogram>=3.4,<4
+faster-whisper>=1.0
+openai>=1.30
+python-dotenv>=1.0

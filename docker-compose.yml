@@ -1,0 +1,14 @@
+services:
+  voice-transcribe-bot:
+    build: .
+    container_name: voice-transcribe-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - whisper-cache:/root/.cache/huggingface
+    mem_limit: 1200m
+    mem_reservation: 400m
+
+volumes:
+  whisper-cache:
