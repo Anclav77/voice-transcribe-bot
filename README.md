@@ -50,8 +50,9 @@ docker compose logs -f
 Полезные команды:
 
 ```bash
-docker compose restart          # перезапуск после правки .env
-docker compose pull && docker compose up -d --build   # обновить код
+docker compose up -d            # пересоздать контейнер после правки .env
+                                 # (docker compose restart НЕ перечитывает .env!)
+git pull && docker compose up -d --build   # обновить код
 docker compose down             # остановить и удалить контейнер
 ```
 
