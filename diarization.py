@@ -1,5 +1,7 @@
 import logging
 import os
+import subprocess
+import tempfile
 import threading
 
 logger = logging.getLogger(__name__)
@@ -32,8 +34,25 @@ def _get_pipeline():
     return _pipeline
 
 
+def _convert_to_wav(audio_path: str) -> str:
+    fd, wav_path = tempfile.mkstemp(suffix=".wav")
+    os.close(fd)
+    subprocess.run(
+        ["ffmpeg", "-y", "-i", audio_path, "-ar", "16000", "-ac", "1", wav_path],
+        check=True,
+        capture_output=True,
+    )
+    return wav_path
+
+
 def diarize(audio_path: str) -> list[tuple[float, float, str]]:
-    annotation = _get_pipeline()(audio_path)
+    # pyannote читает аудио через soundfile/libsndfile, который не умеет Opus (.oga из Telegram)
+    wav_path = _convert_to_wav(audio_path)
+    try:
+        annotation = _get_pipeline()(wav_path)
+    finally:
+        os.remove(wav_path)
+
     return [
         (segment.start, segment.end, speaker)
         for segment, _, speaker in annotation.itertracks(yield_label=True)

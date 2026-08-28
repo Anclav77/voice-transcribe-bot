@@ -72,18 +72,20 @@ async def handle_voice(message: Message) -> None:
         except Exception:
             logger.exception("Ошибка DeepSeek, отдаю сырой текст без обработки")
 
-    await status.edit_text(final_text[:TELEGRAM_MESSAGE_LIMIT])
-    for start in range(TELEGRAM_MESSAGE_LIMIT, len(final_text), TELEGRAM_MESSAGE_LIMIT):
-        await message.answer(final_text[start : start + TELEGRAM_MESSAGE_LIMIT])
-
     try:
         pdf_bytes = await asyncio.to_thread(build_pdf, final_text)
-        await message.answer_document(
-            BufferedInputFile(pdf_bytes, filename="transcript.pdf"),
-            caption="Расшифровка в PDF",
-        )
     except Exception:
-        logger.exception("Ошибка генерации PDF")
+        logger.exception("Ошибка генерации PDF, отправляю текстом")
+        await status.edit_text(final_text[:TELEGRAM_MESSAGE_LIMIT])
+        for start in range(TELEGRAM_MESSAGE_LIMIT, len(final_text), TELEGRAM_MESSAGE_LIMIT):
+            await message.answer(final_text[start : start + TELEGRAM_MESSAGE_LIMIT])
+        return
+
+    await status.delete()
+    await message.answer_document(
+        BufferedInputFile(pdf_bytes, filename="transcript.pdf"),
+        caption="Расшифровка готова",
+    )
 
 
 async def main() -> None:
